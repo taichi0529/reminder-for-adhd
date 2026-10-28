@@ -1,0 +1,3 @@
+// Signing.local.xcconfig にコピーして、自分の証明書とチーム ID に書き換える
+CODE_SIGN_IDENTITY = Apple Development
+DEVELOPMENT_TEAM = XXXXXXXXXX

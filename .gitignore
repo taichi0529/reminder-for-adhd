@@ -1,0 +1,12 @@
+.DS_Store
+
+# XcodeGen が生成する
+*.xcodeproj/
+
+# ビルド成果物
+build/
+DerivedData/
+xcuserdata/
+
+# 個人の署名設定
+Config/Signing.local.xcconfig

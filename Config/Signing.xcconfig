@@ -1,0 +1,7 @@
+// 署名の既定値: 証明書なし (ad-hoc) でビルドする
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+
+// 自分の証明書で署名するときは Signing.local.xcconfig を作って上書きする (git には入れない)
+#include? "Signing.local.xcconfig"

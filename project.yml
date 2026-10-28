@@ -1,0 +1,58 @@
+name: Reminder
+
+options:
+  bundleIdPrefix: dev.taichi
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  Reminder:
+    type: application
+    platform: macOS
+    sources:
+      - path: Reminder
+    info:
+      path: Reminder/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Reminder
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.productivity
+        LSUIElement: true
+        NSCalendarsFullAccessUsageDescription: 予定の時間になったら画面へ大きく表示するため、カレンダーの予定を読み取ります。
+        NSCalendarsUsageDescription: 予定の時間になったら画面へ大きく表示するため、カレンダーの予定を読み取ります。
+    entitlements:
+      path: Reminder/Resources/Reminder.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.personal-information.calendars: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.taichi.Reminder
+        ENABLE_HARDENED_RUNTIME: NO
+    scheme:
+      testTargets:
+        - ReminderTests
+
+  ReminderTests:
+    type: bundle.unit-test
+    platform: macOS
+    # アプリ本体を起動せずに済むよう、テスト対象の Core のソースを直接取り込む
+    sources:
+      - path: ReminderTests
+      - path: Reminder/Core
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.taichi.ReminderTests
+        GENERATE_INFOPLIST_FILE: YES
