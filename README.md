@@ -1,69 +1,91 @@
-# Reminder
+# Reminder For ADHD
 
-Google カレンダーの予定の時間になったら、画面の下 1/4 へ予定を大きく表示する macOS のメニューバーアプリ。ADHD 向けに「了解」を押すまで消えない。
+English | [日本語](README.ja.md)
 
-## 機能
+A macOS menu bar app that shows your Google Calendar events in a large panel across the bottom quarter of the screen when they are due. Built with ADHD in mind: the panel stays until you press "Got it".
 
-- 予定の時間に、全ディスプレイ・全 Space (全画面アプリの上も含む) にパネルを表示する
-  - 通知するタイミングはメニューで「5分前」「1分前」「開始時刻」から複数選べる (既定は開始時刻だけ。最後の1つは外せない)
-  - 「了解」はそのタイミングの分だけ。後のタイミングではまた表示する
-  - 「参加する」を押した予定は、後のタイミングでも表示しない
-  - ボタン: `参加する` (Meet / Zoom / Teams の URL があるとき) / `了解` / `5分後にもう一回`
-  - キーボードのフォーカスは奪わない
-  - 開始から30分以内なら、スリープ明けなどで遅れても表示する
-  - 終日の予定・キャンセルされた予定・自分が辞退した予定は表示しない
-- 音声出力がミュートまたは音量 0 のとき、メニューバーのアイコンとパネルで知らせる。パネルからミュートを解除できる (音量は変えない)
-- メニューバーから今日の予定・通知するタイミング・テスト表示・終了を選べる。メニューの下にバージョンを表示する
-- `/Applications` に置くと、初回起動時にログイン項目へ登録される
+## Features
 
-## セットアップ
+- Shows a panel on every display and every Space (including over full-screen apps) when an event is due
+  - Choose when to be alerted from the menu: 5 minutes before, 1 minute before, and/or at start time. Multiple choices are allowed. The default is start time only, and the last remaining choice cannot be unchecked
+  - "Got it" dismisses only the current alert; later alerts for the same event still appear
+  - "Join" dismisses all remaining alerts for that event
+  - Buttons: `Join` (when a Meet / Zoom / Teams link is found) / `Got it` / `Remind me in 5 minutes`
+  - Never steals keyboard focus
+  - Still shows events up to 30 minutes after they start (e.g. after waking from sleep)
+  - Skips all-day events, canceled events, and events you have declined
+- Warns you, through the menu bar icon and the panel, when audio output is muted or the volume is 0. You can unmute from the panel (the volume is left unchanged)
+- The menu bar menu lists today's events, the alert timing options, a test panel, and Quit. The app version is shown at the bottom
+- When installed in `/Applications`, it registers itself as a login item on first launch
 
-1. **Mac に Google アカウントを追加する**
-   システム設定 → インターネットアカウント → Google で「カレンダー」をオンにする。カレンダー.app に Google の予定が出ればよい。
-2. **同期の間隔を決める**
-   カレンダー.app → 設定 → アカウント → Google →「カレンダーの更新」。おすすめは「5分ごと」。このアプリは Google へ直接取りに行かず、Mac に同期された予定を読む。
-3. **ビルドしてインストールする** (XcodeGen が必要: `brew install xcodegen`)
+The app's UI is currently in Japanese.
+
+## Setup
+
+1. **Add your Google account to your Mac**
+   In System Settings → Internet Accounts → Google, turn on "Calendars".
+2. **Choose which calendars to sync**
+   In [Google's sync settings](https://calendar.google.com/calendar/syncselect), check only the calendars you want alerts for. Every calendar synced to your Mac triggers alerts, so syncing a coworker's shared calendar means you will be alerted for meetings you are not attending (all-day events never trigger alerts).
+3. **Choose the sync interval**
+   In Calendar.app → Settings → Accounts → Google → "Refresh Calendars". "Every 5 minutes" is recommended.
+4. **Build and install** (requires XcodeGen: `brew install xcodegen`)
 
    ```sh
-   make install   # Release ビルドを /Applications にコピーして起動する
+   make install   # copies a Release build to /Applications/Reminder For ADHD.app and launches it
    ```
 
-   初回起動時にカレンダーへのアクセス許可を求められる。
+   On first launch, the app asks for access to your calendars. If registering as a login item fails, check the log:
 
-## 開発
+   ```sh
+   log show --predicate 'subsystem == "jp.co.asaichi.reminder"' --last 10m
+   ```
+
+### You don't need to use Calendar.app
+
+This app never contacts Google directly; it reads the events macOS syncs in the background. Syncing happens even when Calendar.app is not running, so you don't need to use Calendar.app day to day. Keep adding and editing events in Google Calendar (on the web or your phone).
+
+You only need to open Calendar.app to check that your events have synced to your Mac, or to change the sync interval.
+
+Calendars from other accounts added in Internet Accounts, such as iCloud or Exchange, trigger alerts in the same way.
+
+## Development
 
 ```sh
-make generate  # project.yml から Reminder.xcodeproj を生成する
-make build     # Debug ビルド
-make run       # Debug ビルドを起動する (メニューの「テスト表示」でパネルを確認できる)
-make test      # 単体テスト
+make generate  # generate Reminder.xcodeproj from project.yml
+make build     # Debug build
+make run       # launch the Debug build (use "テスト表示" (Test panel) in the menu to preview the panel)
+make test      # unit tests
 ```
 
-`.xcodeproj` は生成物なので git に入れない。
+The `.xcodeproj` is generated, so it is not checked in.
 
-### 署名
+### Code signing
 
-既定では証明書なし (ad-hoc) で署名する。その場合、ビルドし直すたびにカレンダーへのアクセス許可を求められることがある。
+By default the app is ad-hoc signed (no certificate). With ad-hoc signing, macOS may ask for calendar access again after each rebuild.
 
-自分の証明書で署名するときは `Config/Signing.local.xcconfig.example` を `Config/Signing.local.xcconfig` にコピーして、証明書とチーム ID を書く (このファイルは git に入れない)。
+To sign with your own certificate, copy `Config/Signing.local.xcconfig.example` to `Config/Signing.local.xcconfig` and fill in your certificate and team ID. That file is ignored by git.
 
-## 構成
+## Project structure
 
-| ディレクトリ | 役割 |
+| Directory | Role |
 |---|---|
-| `Reminder/Core` | 通知の判定・会議 URL の抽出・表示用の文字列。Foundation だけに依存し、単体テストの対象 |
-| `Reminder/Calendar` | 予定の取得元 (`CalendarSource`) と EventKit 実装 |
-| `Reminder/Audio` | CoreAudio によるミュート・音量の監視 |
-| `Reminder/Overlay` | 通知パネル (NSPanel + SwiftUI) |
-| `Reminder/App` | エントリポイント・メニューバー・タイマー・ログイン項目 |
+| `Reminder/Core` | Alert timing, meeting link detection, and display strings. Depends only on Foundation and is covered by unit tests |
+| `Reminder/Calendar` | The event source (`CalendarSource`) and its EventKit implementation |
+| `Reminder/Audio` | Watching mute and volume via CoreAudio |
+| `Reminder/Overlay` | The alert panel (NSPanel + SwiftUI) |
+| `Reminder/App` | Entry point, menu bar, timers, and login item |
 
-### バッテリーへの配慮
+### Battery usage
 
-定期的なポーリングはしない。予定を読み直すのは次のときだけ。
+The app never polls. It reloads events only:
 
-- カレンダーの同期が終わったとき (`EKEventStoreChanged`)
-- 次に表示が変わる時刻 (通知の開始・予定の終了・「もう一回」の時刻)
-- スリープからの復帰・日付の変更・時計やタイムゾーンの変更
-- 変更通知を取りこぼしたときのための、30分に1回の読み直し (遅れてもよい設定にしてある)
+- when calendar sync finishes (`EKEventStoreChanged`)
+- at the next moment the display can change (an alert time, an event's end, or a snooze ending)
+- after waking from sleep, when the date changes, and when the clock or time zone changes
+- once every 30 minutes as a fallback in case a change notification is missed (with a generous timer tolerance)
 
-App Nap は通知の2分前から通知を出すまでだけ止める。ミュートの状態も CoreAudio の変更通知でだけ読み直す。
+App Nap is disabled only from 2 minutes before an alert until it is shown. Mute status is also re-read only when CoreAudio reports a change.
+
+## License
+
+[MIT License](LICENSE)

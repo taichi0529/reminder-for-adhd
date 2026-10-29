@@ -1,7 +1,7 @@
 name: Reminder
 
 options:
-  bundleIdPrefix: dev.taichi
+  bundleIdPrefix: jp.co.asaichi
   deploymentTarget:
     macOS: "15.0"
   createIntermediateGroups: true
@@ -25,7 +25,7 @@ targets:
     info:
       path: Reminder/Resources/Info.plist
       properties:
-        CFBundleDisplayName: Reminder
+        CFBundleDisplayName: Reminder For ADHD
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
@@ -39,7 +39,8 @@ targets:
         com.apple.security.personal-information.calendars: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.taichi.Reminder
+        PRODUCT_BUNDLE_IDENTIFIER: jp.co.asaichi.reminder
+        PRODUCT_NAME: Reminder For ADHD
         ENABLE_HARDENED_RUNTIME: NO
     scheme:
       testTargets:
@@ -54,5 +55,5 @@ targets:
       - path: Reminder/Core
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.taichi.ReminderTests
+        PRODUCT_BUNDLE_IDENTIFIER: jp.co.asaichi.reminder.tests
         GENERATE_INFOPLIST_FILE: YES
