@@ -8,7 +8,7 @@ struct ReminderApp: App {
         MenuBarExtra {
             MenuContent(model: appDelegate.model)
         } label: {
-            MenuBarIcon(audio: appDelegate.model.audio)
+            MenuBarIcon(model: appDelegate.model)
         }
         .menuBarExtraStyle(.menu)
     }

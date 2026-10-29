@@ -15,7 +15,8 @@ A macOS menu bar app that shows your Google Calendar events in a large panel acr
   - Still shows events up to 30 minutes after they start (e.g. after waking from sleep)
   - Skips all-day events, canceled events, and events you have declined
 - Warns you, through the menu bar icon and the panel, when audio output is muted or the volume is 0. You can unmute from the panel (the volume is left unchanged)
-- The menu bar menu lists today's events, the alert timing options, a test panel, and Quit. The app version is shown at the bottom
+- Choose which calendars trigger alerts from the menu (grouped by account; all calendars, including newly added ones, start unchecked; the menu bar icon and the menu warn you while none is selected)
+- The menu bar menu lists today's events, the alert timing options, the calendar choices, a test panel, and Quit. The app version is shown at the bottom
 - When installed in `/Applications`, it registers itself as a login item on first launch
 
 The app's UI is currently in Japanese.
@@ -24,8 +25,8 @@ The app's UI is currently in Japanese.
 
 1. **Add your Google account to your Mac**
    In System Settings → Internet Accounts → Google, turn on "Calendars".
-2. **Choose which calendars to sync**
-   In [Google's sync settings](https://calendar.google.com/calendar/syncselect), check only the calendars you want alerts for. Every calendar synced to your Mac triggers alerts, so syncing a coworker's shared calendar means you will be alerted for meetings you are not attending (all-day events never trigger alerts).
+2. **Check which calendars sync to your Mac**
+   The app's menu only lists calendars synced to your Mac. If a shared calendar is missing from the menu, check it in [Google's sync settings](https://calendar.google.com/calendar/syncselect).
 3. **Choose the sync interval**
    In Calendar.app → Settings → Accounts → Google → "Refresh Calendars". "Every 5 minutes" is recommended.
 4. **Build and install** (requires XcodeGen: `brew install xcodegen`)
@@ -34,7 +35,9 @@ The app's UI is currently in Japanese.
    make install   # copies a Release build to /Applications/Reminder For ADHD.app and launches it
    ```
 
-   On first launch, the app asks for access to your calendars. If registering as a login item fails, check the log:
+   On first launch, the app asks for access to your calendars. After granting access, check the calendars you want alerts for under "通知するカレンダー" (Calendars to alert) in the menu. All calendars start unchecked, so you get no alerts until you pick at least one.
+
+   If registering as a login item fails, check the log:
 
    ```sh
    log show --predicate 'subsystem == "jp.co.asaichi.reminder"' --last 10m

@@ -37,9 +37,19 @@ final class EventKitCalendarSource: CalendarSource {
         return access
     }
 
-    func events(from start: Date, to end: Date) -> [CalendarEvent] {
+    func calendars() -> [CalendarInfo] {
         guard access == .granted else { return [] }
-        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
+        return store.calendars(for: .event)
+            .map { CalendarInfo(id: $0.calendarIdentifier, title: $0.title, accountName: $0.source?.title ?? "") }
+            .sorted { ($0.accountName, $0.title) < ($1.accountName, $1.title) }
+    }
+
+    func events(from start: Date, to end: Date, calendarIDs: Set<String>) -> [CalendarEvent] {
+        guard access == .granted else { return [] }
+        let calendars = store.calendars(for: .event).filter { calendarIDs.contains($0.calendarIdentifier) }
+        // calendars に空配列を渡すと全カレンダーが対象になってしまうので、先に抜ける
+        guard !calendars.isEmpty else { return [] }
+        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: calendars)
         return store.events(matching: predicate)
             .filter(Self.shouldNotify)
             .map(CalendarEvent.init)

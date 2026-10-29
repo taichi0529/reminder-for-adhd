@@ -1,10 +1,15 @@
 import SwiftUI
 
 struct MenuBarIcon: View {
-    let audio: AudioOutputMonitor
+    let model: AppModel
+
+    /// 音が聞こえない、または通知するカレンダーが選ばれていないときは目立たせる
+    private var needsAttention: Bool {
+        model.audio.status.isSilent || model.needsCalendarSelection
+    }
 
     var body: some View {
-        Image(systemName: audio.status.isSilent ? "calendar.badge.exclamationmark" : "calendar.badge.clock")
+        Image(systemName: needsAttention ? "calendar.badge.exclamationmark" : "calendar.badge.clock")
     }
 }
 
@@ -14,6 +19,10 @@ struct MenuContent: View {
     var body: some View {
         if model.access != .granted {
             Button("カレンダーへのアクセスを許可…") { model.requestCalendarAccess() }
+            Divider()
+        }
+        if model.needsCalendarSelection {
+            Text("⚠️ 通知するカレンダーを選んでください")
             Divider()
         }
 
@@ -43,6 +52,22 @@ struct MenuContent: View {
             }
         }
 
+        Menu("通知するカレンダー") {
+            if model.calendars.isEmpty {
+                Text("カレンダーがありません")
+            }
+            ForEach(model.calendarGroups, id: \.account) { group in
+                Section(group.account) {
+                    ForEach(group.calendars) { calendar in
+                        Toggle(calendar.title, isOn: Binding(
+                            get: { model.enabledCalendarIDs.contains(calendar.id) },
+                            set: { model.setCalendar(calendar.id, enabled: $0) }
+                        ))
+                    }
+                }
+            }
+        }
+
         Divider()
 
         switch model.audio.status {
@@ -62,7 +87,7 @@ struct MenuContent: View {
             .keyboardShortcut("q")
     }
 
-    /// 「バージョン 0.2.0 (2)」
+    /// 「バージョン 0.3.0 (3)」
     private static var versionText: String {
         let info = Bundle.main.infoDictionary ?? [:]
         let version = info["CFBundleShortVersionString"] as? String ?? "?"

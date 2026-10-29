@@ -13,12 +13,16 @@ final class AppModel {
     /// メニューで選べる通知のタイミング (開始の何分前か)
     static let alertLeadChoices = [5, 1, 0]
     private static let alertLeadMinutesKey = "alertLeadMinutes"
+    private static let enabledCalendarIDsKey = "enabledCalendarIDs"
 
     private(set) var access: CalendarAccess
     private(set) var todayEvents: [CalendarEvent] = []
+    private(set) var calendars: [CalendarInfo] = []
     private(set) var now = Date()
     /// 通知するタイミング (開始の何分前か)。空にはしない
     private(set) var alertLeadMinutes: Set<Int>
+    /// 通知するカレンダー。最初は空で、メニューで選んだものだけを通知する
+    private(set) var enabledCalendarIDs: Set<String>
     let audio = AudioOutputMonitor()
 
     @ObservationIgnored private let source: CalendarSource
@@ -36,6 +40,26 @@ final class AppModel {
         access = source.access
         let saved = Set(UserDefaults.standard.array(forKey: Self.alertLeadMinutesKey) as? [Int] ?? [])
         alertLeadMinutes = saved.isEmpty ? [0] : saved
+        enabledCalendarIDs = Set(UserDefaults.standard.stringArray(forKey: Self.enabledCalendarIDsKey) ?? [])
+    }
+
+    /// 通知するカレンダーが1つも選ばれていない (カレンダーへのアクセスがあるときだけ判定する)
+    var needsCalendarSelection: Bool {
+        access == .granted && !calendars.contains { enabledCalendarIDs.contains($0.id) }
+    }
+
+    /// アカウントごとにまとめたカレンダー
+    var calendarGroups: [(account: String, calendars: [CalendarInfo])] {
+        var groups: [(account: String, calendars: [CalendarInfo])] = []
+        for calendar in calendars {
+            let account = calendar.accountName.isEmpty ? "その他" : calendar.accountName
+            if groups.last?.account == account {
+                groups[groups.count - 1].calendars.append(calendar)
+            } else {
+                groups.append((account, [calendar]))
+            }
+        }
+        return groups
     }
 
     private var planner: AlertPlanner {
@@ -91,6 +115,17 @@ final class AppModel {
         refresh()
     }
 
+    /// カレンダーの通知のオン・オフを切り替える
+    func setCalendar(_ id: String, enabled: Bool) {
+        if enabled {
+            enabledCalendarIDs.insert(id)
+        } else {
+            enabledCalendarIDs.remove(id)
+        }
+        UserDefaults.standard.set(enabledCalendarIDs.sorted(), forKey: Self.enabledCalendarIDsKey)
+        refresh()
+    }
+
     /// 本物の予定を待たずに通知パネルの見た目を確かめる
     func showPreview() {
         let start = Date()
@@ -114,6 +149,11 @@ final class AppModel {
         access = source.access
         let planner = planner
 
+        let newCalendars = source.calendars()
+        if newCalendars != calendars {
+            calendars = newCalendars
+        }
+
         let calendar = Calendar.current
         let startOfToday = calendar.startOfDay(for: now)
         let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday) ?? now
@@ -121,7 +161,8 @@ final class AppModel {
         events = source
             .events(
                 from: min(startOfToday, now.addingTimeInterval(-planner.config.maxLateness)),
-                to: max(endOfToday, now.addingTimeInterval(24 * 60 * 60))
+                to: max(endOfToday, now.addingTimeInterval(24 * 60 * 60)),
+                calendarIDs: enabledCalendarIDs
             )
             .sorted { $0.start < $1.start }
 
