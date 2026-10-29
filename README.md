@@ -2,7 +2,9 @@
 
 English | [日本語](README.ja.md)
 
-A macOS menu bar app that shows your Google Calendar events in a large panel across the bottom quarter of the screen when they are due. Built with ADHD in mind: the panel stays until you press "Got it".
+A macOS menu bar app that shows your calendar events in a large panel across the bottom quarter of the screen when they are due. Built with ADHD in mind: the panel stays until you press "Got it".
+
+It works with any calendar synced to your Mac: Google Calendar, iCloud, Exchange / Microsoft 365, other CalDAV accounts such as Yahoo!, local "On My Mac" calendars, and subscribed calendars.
 
 ## Features
 
@@ -23,12 +25,12 @@ The app's UI is currently in Japanese.
 
 ## Setup
 
-1. **Add your Google account to your Mac**
-   In System Settings → Internet Accounts → Google, turn on "Calendars".
+1. **Add your calendar account to your Mac**
+   In System Settings → Internet Accounts, add your account (Google, iCloud, Exchange, and so on) and turn on "Calendars".
 2. **Check which calendars sync to your Mac**
-   The app's menu only lists calendars synced to your Mac. If a shared calendar is missing from the menu, check it in [Google's sync settings](https://calendar.google.com/calendar/syncselect).
+   The app's menu only lists calendars synced to your Mac. For Google, if a shared calendar is missing from the menu, check it in [Google's sync settings](https://calendar.google.com/calendar/syncselect).
 3. **Choose the sync interval**
-   In Calendar.app → Settings → Accounts → Google → "Refresh Calendars". "Every 5 minutes" is recommended.
+   In Calendar.app → Settings → Accounts → (your account) → "Refresh Calendars". "Every 5 minutes" is recommended.
 4. **Build and install** (requires XcodeGen: `brew install xcodegen`)
 
    ```sh
@@ -45,11 +47,9 @@ The app's UI is currently in Japanese.
 
 ### You don't need to use Calendar.app
 
-This app never contacts Google directly; it reads the events macOS syncs in the background. Syncing happens even when Calendar.app is not running, so you don't need to use Calendar.app day to day. Keep adding and editing events in Google Calendar (on the web or your phone).
+This app never contacts calendar services such as Google directly; it reads the events macOS syncs in the background. Syncing happens even when Calendar.app is not running, so you don't need to use Calendar.app day to day. Keep adding and editing events wherever you usually do, such as Google Calendar on the web or your phone.
 
 You only need to open Calendar.app to check that your events have synced to your Mac, or to change the sync interval.
-
-Calendars from other accounts added in Internet Accounts, such as iCloud or Exchange, trigger alerts in the same way.
 
 ## Development
 
