@@ -7,7 +7,7 @@ final class OverlayController {
     static let heightRatio = 0.25
     static let soundName = "Glass"
 
-    var onAction: ((OverlayAction, CalendarEvent) -> Void)?
+    var onAction: ((OverlayAction, Alert) -> Void)?
 
     private let content = OverlayContent()
     private var panels: [OverlayPanel] = []
@@ -15,8 +15,8 @@ final class OverlayController {
 
     init() {
         content.onAction = { [weak self] action in
-            guard let self, let event = content.event else { return }
-            onAction?(action, event)
+            guard let self, let alert = content.alert else { return }
+            onAction?(action, alert)
         }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -32,22 +32,23 @@ final class OverlayController {
 
     var isVisible: Bool { !panels.isEmpty }
 
-    /// 先頭の予定を出す。空なら隠す
-    func update(events: [CalendarEvent], snoozeMinutes: Int, audioStatus: AudioOutputMonitor.Status) {
-        guard let event = events.first else {
+    /// 先頭の通知を出す。空なら隠す
+    func update(alerts: [Alert], snoozeMinutes: Int, audioStatus: AudioOutputMonitor.Status) {
+        guard let alert = alerts.first else {
             hide()
             return
         }
-        let isNewEvent = event.id != content.event?.id
-        content.event = event
-        content.otherCount = events.count - 1
+        // 同じ予定でもタイミングが変われば (5分前 → 1分前など) 鳴らし直す
+        let isNewAlert = alert.id != content.alert?.id
+        content.alert = alert
+        content.otherCount = alerts.count - 1
         content.snoozeMinutes = snoozeMinutes
         content.audioStatus = audioStatus
 
         if panels.isEmpty {
             showPanels()
         }
-        if isNewEvent {
+        if isNewAlert {
             NSSound(named: Self.soundName)?.play()
         }
     }
@@ -73,6 +74,6 @@ final class OverlayController {
     private func hide() {
         panels.forEach { $0.orderOut(nil) }
         panels = []
-        content.event = nil
+        content.alert = nil
     }
 }

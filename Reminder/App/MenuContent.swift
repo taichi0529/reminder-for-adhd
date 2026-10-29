@@ -34,6 +34,17 @@ struct MenuContent: View {
 
         Divider()
 
+        Section("通知するタイミング") {
+            ForEach(AppModel.alertLeadChoices, id: \.self) { minutes in
+                Toggle(minutes == 0 ? "開始時刻" : "\(minutes)分前", isOn: Binding(
+                    get: { model.alertLeadMinutes.contains(minutes) },
+                    set: { model.setAlertLead(minutes, enabled: $0) }
+                ))
+            }
+        }
+
+        Divider()
+
         switch model.audio.status {
         case .muted:
             Button("ミュート中です（解除する）") { model.audio.unmute() }
@@ -46,7 +57,16 @@ struct MenuContent: View {
 
         Divider()
 
+        Text(Self.versionText)
         Button("終了") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
+    }
+
+    /// 「バージョン 0.2.0 (2)」
+    private static var versionText: String {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let version = info["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info["CFBundleVersion"] as? String ?? "?"
+        return "バージョン \(version) (\(build))"
     }
 }

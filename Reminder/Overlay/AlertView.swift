@@ -4,11 +4,11 @@ struct AlertView: View {
     let content: OverlayContent
 
     var body: some View {
-        if let event = content.event {
+        if let alert = content.alert {
             // 秒のカウントダウンのため、パネルが出ている間だけ毎秒描き直す
             TimelineView(.periodic(from: .now, by: 1)) { timeline in
                 AlertCard(
-                    event: event,
+                    event: alert.event,
                     now: timeline.date,
                     otherCount: content.otherCount,
                     snoozeMinutes: content.snoozeMinutes,
@@ -54,16 +54,19 @@ struct AlertCard: View {
         .overlay(shape.strokeBorder(.white.opacity(0.35), lineWidth: 2))
     }
 
-    private let background = LinearGradient(
-        colors: [Color(red: 0.93, green: 0.36, blue: 0.13), Color(red: 0.80, green: 0.13, blue: 0.26)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    private var hasStarted: Bool { now >= event.start }
+
+    private var background: LinearGradient {
+        let colors: [Color] = hasStarted
+            ? [Color(red: 0.93, green: 0.36, blue: 0.13), Color(red: 0.80, green: 0.13, blue: 0.26)]
+            : [Color(red: 0.20, green: 0.29, blue: 0.62), Color(red: 0.36, green: 0.21, blue: 0.58)]
+        return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
 
     private func details(unit: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: unit * 0.035) {
             HStack(spacing: unit * 0.05) {
-                Label("予定の時間です", systemImage: "alarm.fill")
+                Label(hasStarted ? "予定の時間です" : "もうすぐ予定です", systemImage: "alarm.fill")
                     .padding(.horizontal, unit * 0.05)
                     .padding(.vertical, unit * 0.015)
                     .background(.white.opacity(0.22), in: Capsule())

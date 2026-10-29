@@ -11,7 +11,7 @@ enum OverlayAction: Sendable {
 @MainActor
 @Observable
 final class OverlayContent {
-    var event: CalendarEvent?
+    var alert: Alert?
     var otherCount = 0
     var snoozeMinutes = 5
     var audioStatus: AudioOutputMonitor.Status = .audible

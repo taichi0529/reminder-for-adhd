@@ -10,15 +10,19 @@ final class AppModel {
     private static let napGuardLead: TimeInterval = 2 * 60
     /// 変更通知を取りこぼしたときのための読み直し間隔
     private static let safetyRefreshInterval: TimeInterval = 30 * 60
+    /// メニューで選べる通知のタイミング (開始の何分前か)
+    static let alertLeadChoices = [5, 1, 0]
+    private static let alertLeadMinutesKey = "alertLeadMinutes"
 
     private(set) var access: CalendarAccess
     private(set) var todayEvents: [CalendarEvent] = []
     private(set) var now = Date()
+    /// 通知するタイミング (開始の何分前か)。空にはしない
+    private(set) var alertLeadMinutes: Set<Int>
     let audio = AudioOutputMonitor()
 
     @ObservationIgnored private let source: CalendarSource
     @ObservationIgnored private let overlay = OverlayController()
-    @ObservationIgnored private let planner = AlertPlanner()
     @ObservationIgnored private var alertState = AlertState()
     @ObservationIgnored private var events: [CalendarEvent] = []
     @ObservationIgnored private var previewEvent: CalendarEvent?
@@ -30,11 +34,17 @@ final class AppModel {
     init() {
         source = EventKitCalendarSource()
         access = source.access
+        let saved = Set(UserDefaults.standard.array(forKey: Self.alertLeadMinutesKey) as? [Int] ?? [])
+        alertLeadMinutes = saved.isEmpty ? [0] : saved
+    }
+
+    private var planner: AlertPlanner {
+        AlertPlanner(config: AlertConfig(leads: Set(alertLeadMinutes.map { TimeInterval($0 * 60) })))
     }
 
     func start() async {
         source.onChange = { [weak self] in self?.refresh() }
-        overlay.onAction = { [weak self] action, event in self?.handle(action, for: event) }
+        overlay.onAction = { [weak self] action, alert in self?.handle(action, for: alert) }
         audio.start()
         observeAudioStatus()
         observeSystemEvents()
@@ -67,6 +77,20 @@ final class AppModel {
         }
     }
 
+    /// 通知するタイミングのオン・オフを切り替える。最後の1つは外せない
+    func setAlertLead(_ minutes: Int, enabled: Bool) {
+        var leads = alertLeadMinutes
+        if enabled {
+            leads.insert(minutes)
+        } else {
+            leads.remove(minutes)
+        }
+        guard !leads.isEmpty, leads != alertLeadMinutes else { return }
+        alertLeadMinutes = leads
+        UserDefaults.standard.set(leads.sorted(), forKey: Self.alertLeadMinutesKey)
+        refresh()
+    }
+
     /// 本物の予定を待たずに通知パネルの見た目を確かめる
     func showPreview() {
         let start = Date()
@@ -88,6 +112,7 @@ final class AppModel {
     private func refresh() {
         now = Date()
         access = source.access
+        let planner = planner
 
         let calendar = Calendar.current
         let startOfToday = calendar.startOfDay(for: now)
@@ -106,36 +131,37 @@ final class AppModel {
         }
 
         alertState.prune(now: now)
-        let dueEvents = previewEvent.map { [$0] } ?? planner.dueEvents(events, now: now, state: alertState)
+        let dueAlerts = previewEvent.map { [Alert(event: $0, lead: 0)] }
+            ?? planner.dueAlerts(events, now: now, state: alertState)
         overlay.update(
-            events: dueEvents,
+            alerts: dueAlerts,
             snoozeMinutes: Int(planner.config.snooze / 60),
             audioStatus: audio.status
         )
 
-        scheduleNextRefresh()
+        scheduleNextRefresh(planner: planner)
     }
 
-    private func handle(_ action: OverlayAction, for event: CalendarEvent) {
+    private func handle(_ action: OverlayAction, for alert: Alert) {
         if action == .unmute {
             audio.unmute()
             return
         }
-        if event.id == previewEvent?.id {
+        if alert.event.id == previewEvent?.id {
             previewEvent = nil
             refresh()
             return
         }
         switch action {
         case .join:
-            if let url = event.meetingURL {
+            if let url = alert.event.meetingURL {
                 NSWorkspace.shared.open(url)
             }
-            alertState.markHandled(event)
+            alertState.markFinished(alert.event)
         case .acknowledge:
-            alertState.markHandled(event)
+            alertState.markHandled(alert)
         case .snooze:
-            alertState.snooze(event, until: planner.snoozeDate(now: Date()))
+            alertState.snooze(alert, until: planner.snoozeDate(now: Date()))
         case .unmute:
             break
         }
@@ -145,12 +171,12 @@ final class AppModel {
     // MARK: - タイマー
 
     /// 次に表示が変わる時刻に1回だけ起きる。通知が近いときだけ App Nap を止める
-    private func scheduleNextRefresh() {
+    private func scheduleNextRefresh(planner: AlertPlanner) {
         transitionTimer?.invalidate()
         transitionTimer = nil
 
         let nextAlert = events
-            .map(planner.alertStart(of:))
+            .flatMap(planner.alertDates(of:))
             .filter { $0 > now }
             .min()
         let napGuardStart = nextAlert?.addingTimeInterval(-Self.napGuardLead)
