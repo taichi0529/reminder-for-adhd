@@ -63,6 +63,8 @@ make run       # launch the Debug build (use "テスト表示" (Test panel) in t
 make test      # unit tests
 ```
 
+GitHub Actions (`.github/workflows/test.yml`) runs `make test` on macOS 26 (Xcode 26) for every push to main and every pull request.
+
 The `.xcodeproj` is generated, so it is not checked in.
 
 ### Code signing

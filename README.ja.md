@@ -61,6 +61,8 @@ make run       # Debug ビルドを起動する (メニューの「テスト表�
 make test      # 単体テスト
 ```
 
+GitHub Actions (`.github/workflows/test.yml`) で、main へのプッシュとプルリクエストのたびに `make test` を macOS 26 (Xcode 26) で回す。
+
 `.xcodeproj` は生成物なので git に入れない。
 
 ### 署名
