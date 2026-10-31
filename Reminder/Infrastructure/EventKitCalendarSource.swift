@@ -40,7 +40,14 @@ final class EventKitCalendarSource: CalendarSource {
     func calendars() -> [CalendarInfo] {
         guard access == .granted else { return [] }
         return store.calendars(for: .event)
-            .map { CalendarInfo(id: $0.calendarIdentifier, title: $0.title, accountName: $0.source?.title ?? "") }
+            .map {
+                CalendarInfo(
+                    id: $0.calendarIdentifier,
+                    title: $0.title,
+                    accountName: $0.source?.title ?? "",
+                    color: RGBColor($0.cgColor)
+                )
+            }
             .sorted { ($0.accountName, $0.title) < ($1.accountName, $1.title) }
     }
 
@@ -76,6 +83,7 @@ private extension CalendarEvent {
             location: event.location,
             notes: event.notes,
             url: event.url,
+            calendarID: event.calendar?.calendarIdentifier ?? "",
             calendarName: event.calendar?.title ?? "",
             calendarColor: RGBColor(event.calendar?.cgColor)
         )

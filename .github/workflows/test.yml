@@ -1,0 +1,29 @@
+# プッシュとプルリクエストのたびに、ビルドと単体テストを通す
+name: Test
+
+# フォークでも push のたびに確かめられるよう、ブランチは絞らない。手動でも回せる
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # 手元と同じ Xcode 26 系で確かめる
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Xcode のバージョン
+        run: xcodebuild -version
+
+      - name: XcodeGen を入れる
+        run: brew install xcodegen
+
+      - name: 単体テスト
+        run: make test

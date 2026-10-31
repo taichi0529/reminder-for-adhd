@@ -10,13 +10,17 @@ struct ReminderApp: App {
         } label: {
             MenuBarIcon(model: appDelegate.model)
         }
-        .menuBarExtraStyle(.menu)
+        .menuBarExtraStyle(.window)
     }
 }
 
+/// 組み立て役。外とつなぐ実装 (EventKit・UserDefaults・CoreAudio) を作り、画面側に渡す
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let model = AppModel()
+    let model = AppModel(
+        service: ReminderService(source: EventKitCalendarSource(), settings: UserDefaultsSettingsStore()),
+        audio: AudioOutputMonitor()
+    )
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         LoginItem.registerOnceIfInstalled()

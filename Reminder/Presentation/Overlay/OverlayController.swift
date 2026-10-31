@@ -33,7 +33,7 @@ final class OverlayController {
     var isVisible: Bool { !panels.isEmpty }
 
     /// 先頭の通知を出す。空なら隠す
-    func update(alerts: [Alert], snoozeMinutes: Int, audioStatus: AudioOutputMonitor.Status) {
+    func update(alerts: [Alert], snoozeMinutes: Int, audioStatus: AudioStatus) {
         guard let alert = alerts.first else {
             hide()
             return
@@ -53,7 +53,7 @@ final class OverlayController {
         }
     }
 
-    func updateAudioStatus(_ status: AudioOutputMonitor.Status) {
+    func updateAudioStatus(_ status: AudioStatus) {
         content.audioStatus = status
     }
 

@@ -13,8 +13,8 @@ configFiles:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "0.3.0"
-    CURRENT_PROJECT_VERSION: "3"
+    MARKETING_VERSION: "0.4.0"
+    CURRENT_PROJECT_VERSION: "4"
 
 targets:
   Reminder:
@@ -49,10 +49,12 @@ targets:
   ReminderTests:
     type: bundle.unit-test
     platform: macOS
-    # アプリ本体を起動せずに済むよう、テスト対象の Core のソースを直接取り込む
+    # アプリ本体を起動せずに済むよう、Foundation だけに依存する層 (Domain・Application) と表示の文字列を直接取り込む
     sources:
       - path: ReminderTests
-      - path: Reminder/Core
+      - path: Reminder/Domain
+      - path: Reminder/Application
+      - path: Reminder/Presentation/EventFormatting.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: jp.co.asaichi.reminder.tests

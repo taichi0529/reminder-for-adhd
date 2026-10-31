@@ -18,7 +18,10 @@ Mac に同期されたカレンダーなら何でも使える。Google カレン
   - 終日の予定・キャンセルされた予定・自分が辞退した予定は表示しない
 - 音声出力がミュートまたは音量 0 のとき、メニューバーのアイコンとパネルで知らせる。パネルからミュートを解除できる (音量は変えない)
 - 通知するカレンダーをメニューで選べる (アカウントごとに表示。最初はすべてオフで、新しく増えたカレンダーもオフ。1つも選んでいないときはメニューバーのアイコンとメニューで知らせる)
-- メニューバーから今日の予定・通知するタイミング・通知するカレンダー・テスト表示・終了を選べる。メニューの下にバージョンを表示する
+  - アカウントごとに「すべてオン / すべてオフ」でまとめて切り替えられる
+  - 今日の予定があるカレンダーには「今日 N件」と出す。見出しには選んだ数を「(2/15)」のように出す
+- 今日の予定には、どのカレンダーの予定かも出す
+- メニューバーのアイコンを押すとパネルが開く。一番上に次の予定まであと何分かを大きく出し、その下に今日の予定・通知が届かない原因 (ミュート・カレンダー未選択・アクセス未許可) とその場で直すボタン・通知するタイミング・通知するカレンダー・テスト表示・終了を並べる。下にバージョンを表示する
 - `/Applications` に置くと、初回起動時にログイン項目へ登録される
 
 ## セットアップ
@@ -58,6 +61,8 @@ make run       # Debug ビルドを起動する (メニューの「テスト表�
 make test      # 単体テスト
 ```
 
+GitHub Actions (`.github/workflows/test.yml`) で、プッシュとプルリクエストのたびに `make test` を macOS 26 (Xcode 26) で回す。
+
 `.xcodeproj` は生成物なので git に入れない。
 
 ### 署名
@@ -70,11 +75,13 @@ make test      # 単体テスト
 
 | ディレクトリ | 役割 |
 |---|---|
-| `Reminder/Core` | 通知の判定・会議 URL の抽出・表示用の文字列。Foundation だけに依存し、単体テストの対象 |
-| `Reminder/Calendar` | 予定の取得元 (`CalendarSource`) と EventKit 実装 |
-| `Reminder/Audio` | CoreAudio によるミュート・音量の監視 |
-| `Reminder/Overlay` | 通知パネル (NSPanel + SwiftUI) |
-| `Reminder/App` | エントリポイント・メニューバー・タイマー・ログイン項目 |
+| `Reminder/Domain` | 予定・カレンダー・通知の判定 (`AlertPlanner`)・カレンダーの選択・会議 URL の抽出・音声出力の状態。Foundation だけに依存する |
+| `Reminder/Application` | ユースケース (`ReminderService`: どの予定をいつ通知するか・通知への応答・設定の変更) と、外とつなぐポート (`CalendarSource`・`SettingsStore`・`AudioOutput`)。Foundation だけに依存する |
+| `Reminder/Infrastructure` | ポートの実装。EventKit・UserDefaults・CoreAudio・ログイン項目 |
+| `Reminder/Presentation` | `AppModel` (タイマー・App Nap・OS からの通知)・メニューのパネル・通知パネル (NSPanel + SwiftUI)・表示用の文字列 |
+| `Reminder/App` | エントリポイント。Infrastructure の実装を作って Presentation に渡す |
+
+依存は外側から内側への一方向 (App → Presentation / Infrastructure → Application → Domain)。単体テストは Domain・Application・表示用の文字列を対象にし、`ReminderService` には偽の取得元と設定を差して確かめる。
 
 ### バッテリーへの配慮
 

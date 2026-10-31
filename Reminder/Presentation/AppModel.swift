@@ -1,7 +1,8 @@
 import AppKit
 import Observation
 
-/// 予定の読み込み・通知の判定・タイマーをまとめる。
+/// 画面に出す状態と、いつ判定し直すか (タイマー・OS からの通知) を受け持つ。
+/// どの予定をいつ通知するかは ReminderService が決める。
 /// バッテリーのため定期的には動かさず、次に表示が変わる時刻と OS からの通知でだけ動く
 @MainActor
 @Observable
@@ -11,63 +12,49 @@ final class AppModel {
     /// 変更通知を取りこぼしたときのための読み直し間隔
     private static let safetyRefreshInterval: TimeInterval = 30 * 60
     /// メニューで選べる通知のタイミング (開始の何分前か)
-    static let alertLeadChoices = [5, 1, 0]
-    private static let alertLeadMinutesKey = "alertLeadMinutes"
-    private static let enabledCalendarIDsKey = "enabledCalendarIDs"
+    static let alertLeadChoices = ReminderService.alertLeadChoices
 
     private(set) var access: CalendarAccess
     private(set) var todayEvents: [CalendarEvent] = []
     private(set) var calendars: [CalendarInfo] = []
+    /// 選んでいないものも含めた、カレンダーごとの今日の予定の件数。メニューで選ぶときの目安
+    private(set) var todayEventCounts: [String: Int] = [:]
+    /// 通知するカレンダーが1つも選ばれていない
+    private(set) var needsCalendarSelection = false
     private(set) var now = Date()
     /// 通知するタイミング (開始の何分前か)。空にはしない
     private(set) var alertLeadMinutes: Set<Int>
     /// 通知するカレンダー。最初は空で、メニューで選んだものだけを通知する
     private(set) var enabledCalendarIDs: Set<String>
-    let audio = AudioOutputMonitor()
+    let audio: any AudioOutput
 
-    @ObservationIgnored private let source: CalendarSource
+    @ObservationIgnored private let service: ReminderService
     @ObservationIgnored private let overlay = OverlayController()
-    @ObservationIgnored private var alertState = AlertState()
-    @ObservationIgnored private var events: [CalendarEvent] = []
-    @ObservationIgnored private var previewEvent: CalendarEvent?
     @ObservationIgnored private var transitionTimer: Timer?
     @ObservationIgnored private var safetyTimer: Timer?
     @ObservationIgnored private var systemObservers: [NSObjectProtocol] = []
     @ObservationIgnored private var napActivity: NSObjectProtocol?
 
-    init() {
-        source = EventKitCalendarSource()
-        access = source.access
-        let saved = Set(UserDefaults.standard.array(forKey: Self.alertLeadMinutesKey) as? [Int] ?? [])
-        alertLeadMinutes = saved.isEmpty ? [0] : saved
-        enabledCalendarIDs = Set(UserDefaults.standard.stringArray(forKey: Self.enabledCalendarIDsKey) ?? [])
-    }
-
-    /// 通知するカレンダーが1つも選ばれていない (カレンダーへのアクセスがあるときだけ判定する)
-    var needsCalendarSelection: Bool {
-        access == .granted && !calendars.contains { enabledCalendarIDs.contains($0.id) }
+    init(service: ReminderService, audio: any AudioOutput) {
+        self.service = service
+        self.audio = audio
+        access = service.access
+        alertLeadMinutes = service.alertLeadMinutes
+        enabledCalendarIDs = service.enabledCalendarIDs
     }
 
     /// アカウントごとにまとめたカレンダー
     var calendarGroups: [(account: String, calendars: [CalendarInfo])] {
-        var groups: [(account: String, calendars: [CalendarInfo])] = []
-        for calendar in calendars {
-            let account = calendar.accountName.isEmpty ? "その他" : calendar.accountName
-            if groups.last?.account == account {
-                groups[groups.count - 1].calendars.append(calendar)
-            } else {
-                groups.append((account, [calendar]))
-            }
-        }
-        return groups
+        calendars.groupedByAccount()
     }
 
-    private var planner: AlertPlanner {
-        AlertPlanner(config: AlertConfig(leads: Set(alertLeadMinutes.map { TimeInterval($0 * 60) })))
+    /// 今あるカレンダーのうち、通知するものの数
+    var enabledCalendarCount: Int {
+        CalendarSelection.enabledCount(of: calendars.map(\.id), in: enabledCalendarIDs)
     }
 
     func start() async {
-        source.onChange = { [weak self] in self?.refresh() }
+        service.onChange = { [weak self] in self?.refresh() }
         overlay.onAction = { [weak self] action, alert in self?.handle(action, for: alert) }
         audio.start()
         observeAudioStatus()
@@ -75,16 +62,15 @@ final class AppModel {
         startSafetyTimer()
         refresh()
 
-        if source.access == .notDetermined {
-            _ = await source.requestAccess()
+        if await service.requestAccessIfNeeded() {
             refresh()
         }
     }
 
     func requestCalendarAccess() {
-        if source.access == .notDetermined {
+        if service.access == .notDetermined {
             Task {
-                _ = await source.requestAccess()
+                _ = await service.requestAccessIfNeeded()
                 refresh()
             }
         } else if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
@@ -103,42 +89,26 @@ final class AppModel {
 
     /// 通知するタイミングのオン・オフを切り替える。最後の1つは外せない
     func setAlertLead(_ minutes: Int, enabled: Bool) {
-        var leads = alertLeadMinutes
-        if enabled {
-            leads.insert(minutes)
-        } else {
-            leads.remove(minutes)
-        }
-        guard !leads.isEmpty, leads != alertLeadMinutes else { return }
-        alertLeadMinutes = leads
-        UserDefaults.standard.set(leads.sorted(), forKey: Self.alertLeadMinutesKey)
+        guard service.setAlertLead(minutes, enabled: enabled) else { return }
+        alertLeadMinutes = service.alertLeadMinutes
         refresh()
     }
 
     /// カレンダーの通知のオン・オフを切り替える
     func setCalendar(_ id: String, enabled: Bool) {
-        if enabled {
-            enabledCalendarIDs.insert(id)
-        } else {
-            enabledCalendarIDs.remove(id)
-        }
-        UserDefaults.standard.set(enabledCalendarIDs.sorted(), forKey: Self.enabledCalendarIDsKey)
+        setCalendars([id], enabled: enabled)
+    }
+
+    /// 複数のカレンダー (アカウントの全カレンダーなど) の通知をまとめて切り替える
+    func setCalendars(_ ids: [String], enabled: Bool) {
+        service.setCalendars(ids, enabled: enabled)
+        enabledCalendarIDs = service.enabledCalendarIDs
         refresh()
     }
 
     /// 本物の予定を待たずに通知パネルの見た目を確かめる
     func showPreview() {
-        let start = Date()
-        previewEvent = CalendarEvent(
-            id: "preview",
-            title: "テスト表示：定例ミーティング",
-            start: start,
-            end: start.addingTimeInterval(30 * 60),
-            location: "会議室A",
-            notes: "https://meet.google.com/abc-defg-hij",
-            calendarName: "テスト",
-            calendarColor: RGBColor(red: 0.26, green: 0.52, blue: 0.96)
-        )
+        service.showPreview(now: Date())
         refresh()
     }
 
@@ -146,65 +116,33 @@ final class AppModel {
 
     private func refresh() {
         now = Date()
-        access = source.access
-        let planner = planner
+        let snapshot = service.snapshot(now: now)
 
-        let newCalendars = source.calendars()
-        if newCalendars != calendars {
-            calendars = newCalendars
+        // 変わったときだけ書き換え、メニューの描き直しを減らす
+        if snapshot.access != access { access = snapshot.access }
+        if snapshot.calendars != calendars { calendars = snapshot.calendars }
+        if snapshot.todayEventCounts != todayEventCounts { todayEventCounts = snapshot.todayEventCounts }
+        if snapshot.todayEvents != todayEvents { todayEvents = snapshot.todayEvents }
+        if snapshot.needsCalendarSelection != needsCalendarSelection {
+            needsCalendarSelection = snapshot.needsCalendarSelection
         }
 
-        let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: now)
-        let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday) ?? now
-        // 遅れて出す分と、日付をまたいだ直後の予定まで含めて取る
-        events = source
-            .events(
-                from: min(startOfToday, now.addingTimeInterval(-planner.config.maxLateness)),
-                to: max(endOfToday, now.addingTimeInterval(24 * 60 * 60)),
-                calendarIDs: enabledCalendarIDs
-            )
-            .sorted { $0.start < $1.start }
-
-        let newTodayEvents = events.filter { calendar.isDate($0.start, inSameDayAs: now) }
-        if newTodayEvents != todayEvents {
-            todayEvents = newTodayEvents
-        }
-
-        alertState.prune(now: now)
-        let dueAlerts = previewEvent.map { [Alert(event: $0, lead: 0)] }
-            ?? planner.dueAlerts(events, now: now, state: alertState)
-        overlay.update(
-            alerts: dueAlerts,
-            snoozeMinutes: Int(planner.config.snooze / 60),
-            audioStatus: audio.status
-        )
-
-        scheduleNextRefresh(planner: planner)
+        overlay.update(alerts: snapshot.dueAlerts, snoozeMinutes: service.snoozeMinutes, audioStatus: audio.status)
+        scheduleNextRefresh(nextTransition: snapshot.nextTransition, nextAlert: snapshot.nextAlert)
     }
 
     private func handle(_ action: OverlayAction, for alert: Alert) {
-        if action == .unmute {
+        let response: AlertResponse
+        switch action {
+        case .unmute:
             audio.unmute()
             return
+        case .join: response = .join
+        case .acknowledge: response = .acknowledge
+        case .snooze: response = .snooze
         }
-        if alert.event.id == previewEvent?.id {
-            previewEvent = nil
-            refresh()
-            return
-        }
-        switch action {
-        case .join:
-            if let url = alert.event.meetingURL {
-                NSWorkspace.shared.open(url)
-            }
-            alertState.markFinished(alert.event)
-        case .acknowledge:
-            alertState.markHandled(alert)
-        case .snooze:
-            alertState.snooze(alert, until: planner.snoozeDate(now: Date()))
-        case .unmute:
-            break
+        if let url = service.respond(response, to: alert, now: Date()) {
+            NSWorkspace.shared.open(url)
         }
         refresh()
     }
@@ -212,26 +150,18 @@ final class AppModel {
     // MARK: - タイマー
 
     /// 次に表示が変わる時刻に1回だけ起きる。通知が近いときだけ App Nap を止める
-    private func scheduleNextRefresh(planner: AlertPlanner) {
+    private func scheduleNextRefresh(nextTransition: Date?, nextAlert: Date?) {
         transitionTimer?.invalidate()
         transitionTimer = nil
 
-        let nextAlert = events
-            .flatMap(planner.alertDates(of:))
-            .filter { $0 > now }
-            .min()
         let napGuardStart = nextAlert?.addingTimeInterval(-Self.napGuardLead)
-
         if let napGuardStart, napGuardStart <= now {
             beginNapGuard()
         } else {
             endNapGuard()
         }
 
-        let wakeDates = [
-            planner.nextTransition(events, now: now, state: alertState),
-            napGuardStart.flatMap { $0 > now ? $0 : nil },
-        ]
+        let wakeDates = [nextTransition, napGuardStart.flatMap { $0 > now ? $0 : nil }]
         guard let wakeDate = wakeDates.compactMap({ $0 }).min() else { return }
 
         let timer = Timer(fire: wakeDate, interval: 0, repeats: false) { [weak self] _ in
