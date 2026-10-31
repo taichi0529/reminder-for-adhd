@@ -10,7 +10,7 @@ struct ReminderApp: App {
         } label: {
             MenuBarIcon(model: appDelegate.model)
         }
-        .menuBarExtraStyle(.menu)
+        .menuBarExtraStyle(.window)
     }
 }
 

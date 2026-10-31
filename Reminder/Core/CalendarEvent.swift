@@ -43,6 +43,17 @@ struct CalendarEvent: Identifiable, Hashable, Sendable {
     }
 }
 
+extension [CalendarEvent] {
+    /// メニューで大きく出す予定。これから始まる予定のうち一番早いもの。
+    /// なければ進行中の予定のうち一番最近始まったもの (長い作業ブロックより次の会議を優先する)
+    func nextUp(now: Date) -> CalendarEvent? {
+        if let upcoming = filter({ $0.start > now }).min(by: { $0.start < $1.start }) {
+            return upcoming
+        }
+        return filter { $0.start <= now && now < $0.end }.max { $0.start < $1.start }
+    }
+}
+
 struct RGBColor: Hashable, Sendable {
     let red: Double
     let green: Double

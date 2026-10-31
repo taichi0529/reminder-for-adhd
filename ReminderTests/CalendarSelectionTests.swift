@@ -58,4 +58,41 @@ struct CalendarSelectionTests {
         #expect(EventFormatting.todayMenuTitle(withCalendar, calendar: calendar) == "9:05  定例（仕事）")
         #expect(EventFormatting.todayMenuTitle(withoutCalendar, calendar: calendar) == "9:05  定例")
     }
+
+    // MARK: - 次の予定
+
+    private func timed(_ id: String, from startMinutes: Double, to endMinutes: Double) -> CalendarEvent {
+        CalendarEvent(id: id, title: id, start: start.addingTimeInterval(startMinutes * 60), end: start.addingTimeInterval(endMinutes * 60))
+    }
+
+    @Test func 次の予定はこれから始まる一番早い予定() {
+        let events = [timed("later", from: 60, to: 90), timed("soon", from: 10, to: 40), timed("past", from: -60, to: -30)]
+        #expect(events.nextUp(now: start)?.id == "soon")
+    }
+
+    @Test func 長い作業ブロックの途中でも次の会議を出す() {
+        let events = [timed("block", from: -30, to: 300), timed("meeting", from: 120, to: 150)]
+        #expect(events.nextUp(now: start)?.id == "meeting")
+    }
+
+    @Test func これからの予定がなければ進行中の予定() {
+        let events = [timed("old", from: -120, to: 60), timed("recent", from: -10, to: 20), timed("done", from: -60, to: -1)]
+        #expect(events.nextUp(now: start)?.id == "recent")
+        #expect([timed("done", from: -60, to: -1)].nextUp(now: start) == nil)
+    }
+
+    @Test func 残り時間の書き方() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "Asia/Tokyo"))
+        let countdown = { (minutesAhead: Double) in
+            EventFormatting.countdown(to: self.timed("a", from: minutesAhead, to: minutesAhead + 30), now: self.start, calendar: calendar)
+        }
+        #expect(countdown(0.5) == "まもなく")
+        #expect(countdown(1) == "あと1分")
+        #expect(countdown(22.2) == "あと23分")
+        #expect(countdown(60) == "あと1時間")
+        #expect(countdown(65) == "あと1時間5分")
+        // 始まっていれば終わる時刻。start は 2027-01-15 17:00 (日本時間)
+        #expect(countdown(-5) == "17:25まで")
+    }
 }

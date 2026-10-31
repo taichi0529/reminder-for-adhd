@@ -21,7 +21,7 @@ It works with any calendar synced to your Mac: Google Calendar, iCloud, Exchange
   - Turn all of an account's calendars on or off at once
   - Calendars with events today show the count ("今日 N件"), and the submenu title shows how many you have selected, such as "(2/15)"
 - Today's events in the menu also show which calendar each one is in
-- The menu bar menu lists today's events, the alert timing options, the calendar choices, a test panel, and Quit. The app version is shown at the bottom
+- Clicking the menu bar icon opens a panel. The top shows how long until your next event, in large type. Below it are today's events, anything that would stop alerts from reaching you (muted audio, no calendar selected, no calendar access) with a button to fix it, the alert timing options, the calendar choices, a test panel, and Quit. The app version is shown at the bottom
 - When installed in `/Applications`, it registers itself as a login item on first launch
 
 The app's UI is currently in Japanese.

@@ -19,6 +19,17 @@ enum EventFormatting {
         return String(format: "%d:%02d", components.hour ?? 0, components.minute ?? 0)
     }
 
+    /// メニューの「次の予定」の残り時間。「まもなく」「あと23分」「あと1時間5分」、始まっていれば「11:00まで」
+    static func countdown(to event: CalendarEvent, now: Date, calendar: Calendar = .current) -> String {
+        let seconds = event.start.timeIntervalSince(now)
+        guard seconds > 0 else { return "\(time(event.end, calendar: calendar))まで" }
+        guard seconds >= 60 else { return "まもなく" }
+        let minutes = Int((seconds / 60).rounded(.up))
+        if minutes < 60 { return "あと\(minutes)分" }
+        let (hours, rest) = minutes.quotientAndRemainder(dividingBy: 60)
+        return rest == 0 ? "あと\(hours)時間" : "あと\(hours)時間\(rest)分"
+    }
+
     /// メニューの「今日の予定」の1行。「9:05  定例（仕事）」
     static func todayMenuTitle(_ event: CalendarEvent, calendar: Calendar = .current) -> String {
         let title = "\(time(event.start, calendar: calendar))  \(event.title)"
