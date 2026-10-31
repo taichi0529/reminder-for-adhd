@@ -18,8 +18,9 @@
 
 ### 開発
 
-- GitHub Actions で、main へのプッシュとプルリクエストのたびに単体テストを回すようにした (macOS 26 / Xcode 26)
-- 残り時間の書き方・次の予定の選び方・カレンダーの選択の数え方を Core に置き、単体テストを足した (27 件 → 39 件)
+- GitHub Actions で、プッシュとプルリクエストのたびに単体テストを回すようにした (macOS 26 / Xcode 26)
+- ソースをクリーンアーキテクチャの層 (Domain・Application・Infrastructure・Presentation) に分けた。どの予定をいつ通知するかは `ReminderService` が決め、EventKit・UserDefaults・CoreAudio はポートの実装として差し替えられる
+- 単体テストを足した (27 件 → 56 件)。`ReminderService` を偽の取得元と設定で確かめるテスト、残り時間の書き方・次の予定の選び方・カレンダーの選択の数え方のテスト
 
 ## 0.3.0 (3) — 2026-10-29
 

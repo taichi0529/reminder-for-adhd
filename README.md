@@ -63,7 +63,7 @@ make run       # launch the Debug build (use "テスト表示" (Test panel) in t
 make test      # unit tests
 ```
 
-GitHub Actions (`.github/workflows/test.yml`) runs `make test` on macOS 26 (Xcode 26) for every push to main and every pull request.
+GitHub Actions (`.github/workflows/test.yml`) runs `make test` on macOS 26 (Xcode 26) for every push and every pull request.
 
 The `.xcodeproj` is generated, so it is not checked in.
 
@@ -77,11 +77,13 @@ To sign with your own certificate, copy `Config/Signing.local.xcconfig.example` 
 
 | Directory | Role |
 |---|---|
-| `Reminder/Core` | Alert timing, meeting link detection, and display strings. Depends only on Foundation and is covered by unit tests |
-| `Reminder/Calendar` | The event source (`CalendarSource`) and its EventKit implementation |
-| `Reminder/Audio` | Watching mute and volume via CoreAudio |
-| `Reminder/Overlay` | The alert panel (NSPanel + SwiftUI) |
-| `Reminder/App` | Entry point, menu bar, timers, and login item |
+| `Reminder/Domain` | Events, calendars, alert timing (`AlertPlanner`), calendar selection, meeting link detection, and audio output status. Depends only on Foundation |
+| `Reminder/Application` | The use case (`ReminderService`: which events to alert and when, responses to alerts, and settings changes) and the ports to the outside world (`CalendarSource`, `SettingsStore`, `AudioOutput`). Depends only on Foundation |
+| `Reminder/Infrastructure` | Implementations of the ports: EventKit, UserDefaults, CoreAudio, and the login item |
+| `Reminder/Presentation` | `AppModel` (timers, App Nap, system notifications), the menu bar panel, the alert panel (NSPanel + SwiftUI), and display strings |
+| `Reminder/App` | Entry point. Builds the Infrastructure implementations and hands them to Presentation |
+
+Dependencies point only inward (App → Presentation / Infrastructure → Application → Domain). Unit tests cover Domain, Application, and the display strings; `ReminderService` is tested with a fake event source and settings store.
 
 ### Battery usage
 

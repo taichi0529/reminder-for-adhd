@@ -61,7 +61,7 @@ make run       # Debug ビルドを起動する (メニューの「テスト表�
 make test      # 単体テスト
 ```
 
-GitHub Actions (`.github/workflows/test.yml`) で、main へのプッシュとプルリクエストのたびに `make test` を macOS 26 (Xcode 26) で回す。
+GitHub Actions (`.github/workflows/test.yml`) で、プッシュとプルリクエストのたびに `make test` を macOS 26 (Xcode 26) で回す。
 
 `.xcodeproj` は生成物なので git に入れない。
 
@@ -75,11 +75,13 @@ GitHub Actions (`.github/workflows/test.yml`) で、main へのプッシュと�
 
 | ディレクトリ | 役割 |
 |---|---|
-| `Reminder/Core` | 通知の判定・会議 URL の抽出・表示用の文字列。Foundation だけに依存し、単体テストの対象 |
-| `Reminder/Calendar` | 予定の取得元 (`CalendarSource`) と EventKit 実装 |
-| `Reminder/Audio` | CoreAudio によるミュート・音量の監視 |
-| `Reminder/Overlay` | 通知パネル (NSPanel + SwiftUI) |
-| `Reminder/App` | エントリポイント・メニューバー・タイマー・ログイン項目 |
+| `Reminder/Domain` | 予定・カレンダー・通知の判定 (`AlertPlanner`)・カレンダーの選択・会議 URL の抽出・音声出力の状態。Foundation だけに依存する |
+| `Reminder/Application` | ユースケース (`ReminderService`: どの予定をいつ通知するか・通知への応答・設定の変更) と、外とつなぐポート (`CalendarSource`・`SettingsStore`・`AudioOutput`)。Foundation だけに依存する |
+| `Reminder/Infrastructure` | ポートの実装。EventKit・UserDefaults・CoreAudio・ログイン項目 |
+| `Reminder/Presentation` | `AppModel` (タイマー・App Nap・OS からの通知)・メニューのパネル・通知パネル (NSPanel + SwiftUI)・表示用の文字列 |
+| `Reminder/App` | エントリポイント。Infrastructure の実装を作って Presentation に渡す |
+
+依存は外側から内側への一方向 (App → Presentation / Infrastructure → Application → Domain)。単体テストは Domain・Application・表示用の文字列を対象にし、`ReminderService` には偽の取得元と設定を差して確かめる。
 
 ### バッテリーへの配慮
 

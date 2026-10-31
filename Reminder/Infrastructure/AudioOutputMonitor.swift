@@ -6,19 +6,8 @@ import Observation
 /// OS からの変更通知でだけ読み直し、定期的には見に行かない
 @MainActor
 @Observable
-final class AudioOutputMonitor {
-    enum Status: Equatable {
-        case audible
-        case muted
-        case volumeZero
-        /// 出力先によってはミュートも音量も取れない
-        case unknown
-
-        /// 通知の音が聞こえない状態か
-        var isSilent: Bool { self == .muted || self == .volumeZero }
-    }
-
-    private(set) var status: Status = .unknown
+final class AudioOutputMonitor: AudioOutput {
+    private(set) var status: AudioStatus = .unknown
 
     @ObservationIgnored private var device = AudioObjectID(kAudioObjectUnknown)
     @ObservationIgnored private var deviceListener: AudioObjectPropertyListenerBlock?

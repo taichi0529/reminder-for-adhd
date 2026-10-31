@@ -1,19 +1,5 @@
 import Foundation
 
-enum CalendarAccess: Sendable {
-    case notDetermined
-    case granted
-    case denied
-}
-
-struct CalendarInfo: Identifiable, Hashable, Sendable {
-    let id: String
-    let title: String
-    /// Google アカウントのメールアドレス・iCloud など
-    let accountName: String
-    var color: RGBColor? = nil
-}
-
 /// 予定の取得元。EventKit 以外 (Google Calendar API など) に差し替えられるようにしておく
 @MainActor
 protocol CalendarSource: AnyObject {

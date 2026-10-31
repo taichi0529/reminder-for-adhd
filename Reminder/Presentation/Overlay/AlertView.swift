@@ -25,7 +25,7 @@ struct AlertCard: View {
     let now: Date
     var otherCount = 0
     var snoozeMinutes = 5
-    var audioStatus: AudioOutputMonitor.Status = .audible
+    var audioStatus: AudioStatus = .audible
     var onAction: (OverlayAction) -> Void = { _ in }
 
     private let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)

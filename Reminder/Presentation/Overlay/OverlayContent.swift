@@ -14,6 +14,6 @@ final class OverlayContent {
     var alert: Alert?
     var otherCount = 0
     var snoozeMinutes = 5
-    var audioStatus: AudioOutputMonitor.Status = .audible
+    var audioStatus: AudioStatus = .audible
     @ObservationIgnored var onAction: (OverlayAction) -> Void = { _ in }
 }
