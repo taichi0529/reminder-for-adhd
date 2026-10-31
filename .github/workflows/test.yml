@@ -1,10 +1,11 @@
 # プッシュとプルリクエストのたびに、ビルドと単体テストを通す
 name: Test
 
+# フォークでも push のたびに確かめられるよう、ブランチは絞らない。手動でも回せる
 on:
   push:
-    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
