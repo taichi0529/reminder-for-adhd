@@ -31,7 +31,7 @@ struct MenuContent: View {
                 Text("今日の予定はありません")
             }
             ForEach(model.todayEvents) { event in
-                let title = "\(EventFormatting.time(event.start))  \(event.title)"
+                let title = EventFormatting.todayMenuTitle(event)
                 if event.end <= model.now {
                     // 終わった予定は押せない (薄く表示される)
                     Text(title)
@@ -52,14 +52,24 @@ struct MenuContent: View {
             }
         }
 
-        Menu("通知するカレンダー") {
+        Menu(EventFormatting.calendarMenuTitle(enabled: model.enabledCalendarCount, total: model.calendars.count)) {
             if model.calendars.isEmpty {
                 Text("カレンダーがありません")
             }
             ForEach(model.calendarGroups, id: \.account) { group in
                 Section(group.account) {
+                    let ids = group.calendars.map(\.id)
+                    if CalendarSelection.allEnabled(ids, in: model.enabledCalendarIDs) {
+                        Button("このアカウントをすべてオフ") { model.setCalendars(ids, enabled: false) }
+                    } else {
+                        Button("このアカウントをすべてオン") { model.setCalendars(ids, enabled: true) }
+                    }
                     ForEach(group.calendars) { calendar in
-                        Toggle(calendar.title, isOn: Binding(
+                        let title = EventFormatting.calendarToggleTitle(
+                            calendar.title,
+                            todayCount: model.todayEventCounts[calendar.id] ?? 0
+                        )
+                        Toggle(title, isOn: Binding(
                             get: { model.enabledCalendarIDs.contains(calendar.id) },
                             set: { model.setCalendar(calendar.id, enabled: $0) }
                         ))

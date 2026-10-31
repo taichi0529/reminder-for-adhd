@@ -18,6 +18,8 @@ final class AppModel {
     private(set) var access: CalendarAccess
     private(set) var todayEvents: [CalendarEvent] = []
     private(set) var calendars: [CalendarInfo] = []
+    /// 選んでいないものも含めた、カレンダーごとの今日の予定の件数。メニューで選ぶときの目安
+    private(set) var todayEventCounts: [String: Int] = [:]
     private(set) var now = Date()
     /// 通知するタイミング (開始の何分前か)。空にはしない
     private(set) var alertLeadMinutes: Set<Int>
@@ -117,13 +119,19 @@ final class AppModel {
 
     /// カレンダーの通知のオン・オフを切り替える
     func setCalendar(_ id: String, enabled: Bool) {
-        if enabled {
-            enabledCalendarIDs.insert(id)
-        } else {
-            enabledCalendarIDs.remove(id)
-        }
+        setCalendars([id], enabled: enabled)
+    }
+
+    /// 複数のカレンダー (アカウントの全カレンダーなど) の通知をまとめて切り替える
+    func setCalendars(_ ids: [String], enabled: Bool) {
+        enabledCalendarIDs = CalendarSelection.setting(ids, enabled: enabled, in: enabledCalendarIDs)
         UserDefaults.standard.set(enabledCalendarIDs.sorted(), forKey: Self.enabledCalendarIDsKey)
         refresh()
+    }
+
+    /// 今あるカレンダーのうち、通知するものの数
+    var enabledCalendarCount: Int {
+        CalendarSelection.enabledCount(of: calendars.map(\.id), in: enabledCalendarIDs)
     }
 
     /// 本物の予定を待たずに通知パネルの見た目を確かめる
@@ -165,6 +173,13 @@ final class AppModel {
                 calendarIDs: enabledCalendarIDs
             )
             .sorted { $0.start < $1.start }
+
+        let newCounts = CalendarSelection.eventCounts(
+            source.events(from: startOfToday, to: endOfToday, calendarIDs: Set(newCalendars.map(\.id)))
+        )
+        if newCounts != todayEventCounts {
+            todayEventCounts = newCounts
+        }
 
         let newTodayEvents = events.filter { calendar.isDate($0.start, inSameDayAs: now) }
         if newTodayEvents != todayEvents {

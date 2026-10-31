@@ -18,6 +18,9 @@ It works with any calendar synced to your Mac: Google Calendar, iCloud, Exchange
   - Skips all-day events, canceled events, and events you have declined
 - Warns you, through the menu bar icon and the panel, when audio output is muted or the volume is 0. You can unmute from the panel (the volume is left unchanged)
 - Choose which calendars trigger alerts from the menu (grouped by account; all calendars, including newly added ones, start unchecked; the menu bar icon and the menu warn you while none is selected)
+  - Turn all of an account's calendars on or off at once
+  - Calendars with events today show the count ("今日 N件"), and the submenu title shows how many you have selected, such as "(2/15)"
+- Today's events in the menu also show which calendar each one is in
 - The menu bar menu lists today's events, the alert timing options, the calendar choices, a test panel, and Quit. The app version is shown at the bottom
 - When installed in `/Applications`, it registers itself as a login item on first launch
 

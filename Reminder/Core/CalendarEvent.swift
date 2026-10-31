@@ -10,6 +10,8 @@ struct CalendarEvent: Identifiable, Hashable, Sendable {
     let location: String?
     let notes: String?
     let url: URL?
+    /// 予定が入っているカレンダーの ID (CalendarInfo.id)
+    let calendarID: String
     let calendarName: String
     let calendarColor: RGBColor?
     /// Meet・Zoom・Teams の参加 URL
@@ -23,6 +25,7 @@ struct CalendarEvent: Identifiable, Hashable, Sendable {
         location: String? = nil,
         notes: String? = nil,
         url: URL? = nil,
+        calendarID: String = "",
         calendarName: String = "",
         calendarColor: RGBColor? = nil
     ) {
@@ -33,6 +36,7 @@ struct CalendarEvent: Identifiable, Hashable, Sendable {
         self.location = location
         self.notes = notes
         self.url = url
+        self.calendarID = calendarID
         self.calendarName = calendarName
         self.calendarColor = calendarColor
         self.meetingURL = MeetingLinkDetector.firstLink(in: [url?.absoluteString, location, notes])

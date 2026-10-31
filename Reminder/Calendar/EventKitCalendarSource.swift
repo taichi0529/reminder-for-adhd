@@ -76,6 +76,7 @@ private extension CalendarEvent {
             location: event.location,
             notes: event.notes,
             url: event.url,
+            calendarID: event.calendar?.calendarIdentifier ?? "",
             calendarName: event.calendar?.title ?? "",
             calendarColor: RGBColor(event.calendar?.cgColor)
         )
